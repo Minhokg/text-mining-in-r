@@ -78,7 +78,8 @@ for (nselw in (1:10)*10){
 # 10 files are made.
 
 # Now Let's build a classification model
-# First is a Naive Bayes 
+# We will see Naive Bayes, KNN, and support vector machine.
+# First is Naive Bayes 
 # Define a Naive Bayes function as below
 
 NBayes <- function(df,tests){
@@ -99,5 +100,77 @@ kcv <- 5; tests <- sample(nobs,nobs/kcv)
 # For evaluating the performance, make empty vectors.
 acc_nb <- c(); confmat_nb <- c()
 
-# 
+# Now use files we made.
+# I will use compare models trained on 10, 20, ..., 100 words
+# and last all words (1102)
 
+for (nselw in c((1:10)*10,dim(df)[2])){
+  if (nselw<=100){
+    slctrms <- read.csv(paste(nselw," features.csv",sep =""),row.names = 1)
+  } else{
+    slctrms <- names(df)
+  }
+  slctrms <- unique(unlist(slctrms))
+  sDTM <- df[,slctrms]
+  tblnb <- NBayes(sDTM, tests)
+  confmat_nb <- cbind(confmat_nb,as.vector(tblnb))
+  acc_nb <- c(acc_nb,sum(diag(tblnb))/sum(tblnb))
+}
+
+# Now check accuracy and confusion matrix
+rownames(confmat_nb) <- do.call(paste, c(expand.grid(grps,grps)[,2:1],sep=","))
+colnames(confmat_nb) <- c((1:10)*10,dim(df)[2])
+names(acc_nb) <- c((1:10)*10,dim(df)[2])
+list(accuaracy = acc_nb, confusionmatrix = confmat_nb)
+
+loc_nb <- names(which.max(acc_nb))
+best_nb <- as.vector(acc_nb)[which.max(acc_nb)]
+paste('The best accuracy is ',best_nb,' when using the number of ',loc_nb,' words')
+
+# Next model is a KNN
+# Unlike naive model, one more parameter is added, the number of k
+KNN <- function(df,tests,kk){
+  dtmat <- as.matrix(df)
+  traindat <- dtmat[-tests,]
+  testdat <- dtmat[tests,]
+  trainy <- lbls[-tests,1]
+  testy <- lbls[tests,1]
+  predknn <- knn(train=traindat,test = testdat,cl=trainy,k=kk)
+  tblnb <- table(data.frame(lbl=testy, pred=predknn))
+}
+
+# Also, accuracy is contained in a matrix, not a vector 
+# because there is a 'k' parameter
+# although below function is long, it is just a contraction of what we did in
+KNNclass <- function(df,tests){
+  acmat <- c()
+  confmat_knn_list <- vector(mode = 'list',length=11)
+  word_number <- c((1:10)*10,dim(df)[2])
+  for (nselw in word_number){
+    acc_knn <- c(); confmat_knn <- c()
+    if (nselw <=100){
+      slctrms <- read.csv(paste(nselw," features.csv",sep =""), row.names = 1)
+      
+    } else {slctrms <- names(df)}
+    slctrms <- unique(unlist(slctrms))
+    sDTM <- df[,slctrms]
+    for (kk in seq(1,9,2)){
+      tblknn <- KNN(sDTM, tests,kk)
+      confmat_knn <- cbind(confmat_knn,as.vector(tblknn))
+      acc_knn <- c(acc_knn,sum(diag(tblknn))/sum(tblknn))
+    }
+    rownames(confmat_knn) <- do.call(paste, c(expand.grid(grps,grps)[,2:1],sep=","))
+    colnames(confmat_knn) <- seq(1,9,2)
+    confmat_knn_list[[which(word_number==nselw)]] <- confmat_knn
+    acmat <- cbind(acmat,acc_knn)
+    
+  }
+  rownames(acmat) <- seq(1,9,2)
+  colnames(acmat) <- word_number
+  names(confmat_knn_list) <- word_number
+  list(acmat=acmat, confmat_knn_list = confmat_knn_list)
+}
+
+result_knn <- KNNclass(df, tests)
+
+best_knn <- max(result[['acmat']])
