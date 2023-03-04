@@ -174,3 +174,45 @@ KNNclass <- function(df,tests){
 result_knn <- KNNclass(df, tests)
 
 best_knn <- max(result[['acmat']])
+paste('When K is ', 2*(which.max(result[['acmat']]) %% 5) -1,'and the number of words is ',
+      10*(which.max(result[['acmat']]) %/% 5 + 1), 'the accuracy is best at ',best_knn)
+
+# Last, let's see Support Vector Machine Model.
+
+SVM <- function(df,tests,mthd,cst){
+  dtmat <- as.matrix(df)
+  traindat <- dtmat[-tests,]
+  testdat <- dtmat[tests,]
+  trainy <- lbls[-tests,1]
+  testy <- lbls[tests,1]
+  trainsvm <- svm(x=traindat,y=as.factor(trainy),
+                  kernel=mthd,cost=cst)
+  predsvm <- predict(trainsvm, testdat)
+  tblsvm <- table(data.frame(lbl=testy, pred=predsvm))
+}
+
+# This time, we will not make confusion matrix.
+# Because it is a four-dimensional object. so we can't handle that.
+# We can just generate accuracy list 
+
+SVMclass <- function(df, tests,mthd,cst){
+  acc <- c()
+  for (nselw in seq(10,90,20)) {
+    if (nselw<=100){
+      slctrms <- read.csv(paste('final',nselw," features.csv",sep =""), row.names = 1)
+    } else {
+      slctrms <- names(df)
+    }
+    slctrms <- unique(unlist(slctrms))
+    sDTM <- df[,slctrms]
+    tblsvm <- SVM(sDTM, tests, mthd,cst)
+    acc <- c(acc,sum(diag(tblsvm))/sum(tblsvm))
+  }
+  acc
+}
+
+
+acclist <- vector(mode = 'list',length=2)
+method <- c('linear','radial')
+cost <- c(0.1,1,10)
+names(acclist) <- method
