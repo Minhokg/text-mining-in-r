@@ -197,6 +197,8 @@ SVM <- function(df,tests,mthd,cst){
 
 SVMclass <- function(df, tests,mthd,cst){
   acc <- c()
+  # because it spends so much time if we would handle all files(10, 20, ...100)
+  # So, here, I'd like to deal with 10,30,50,70,90.
   for (nselw in seq(10,90,20)) {
     if (nselw<=100){
       slctrms <- read.csv(paste('final',nselw," features.csv",sep =""), row.names = 1)
@@ -216,3 +218,14 @@ acclist <- vector(mode = 'list',length=2)
 method <- c('linear','radial')
 cost <- c(0.1,1,10)
 names(acclist) <- method
+
+# Generating accuracy lists 
+for (mthd in method){
+  acmat <- c() # Make an empty object for containing accuracy
+  for (cst in cost){
+    acc <- SVMclass(df, tests, mthd, cst)
+    acmat <- rbind(acmat, acc)
+  }
+  colnames(acmat) <- seq(10,90,20)
+  rownames(acmat) <- c(0.1,1,10)
+}
